@@ -3,10 +3,18 @@
   "version": "1.0.0",
   "description": "ChatGPT Insights Project",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "chatgpt-insights": "./dist/index.js"
   },
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
@@ -26,7 +34,8 @@
   "dependencies": {
     "commander": "^11.1.0",
     "extract-zip": "^2.0.1",
-    "inquirer": "^9.2.15"
+    "inquirer": "^9.2.15",
+    "node-fetch": "^2.6.1"
   },
   "devDependencies": {
     "@types/inquirer": "^9.0.7",

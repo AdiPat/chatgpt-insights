@@ -7,6 +7,22 @@ export async function main(): Promise<void> {
   await cli.execute();
 }
 
-if (import.meta.url === new URL(import.meta.url).href) {
+// Only run CLI when executed directly (not imported)
+const isDirectExecution = () => {
+  try {
+    return (
+      typeof import.meta === "object" &&
+      import.meta.url === new URL(import.meta.url).href
+    );
+  } catch {
+    return false;
+  }
+};
+
+if (isDirectExecution()) {
   main().catch(console.error);
 }
+
+export { processZipFile } from "./processor.js";
+export { InsightEngine } from "./insight-engine.js";
+export * from "./models/index.js";

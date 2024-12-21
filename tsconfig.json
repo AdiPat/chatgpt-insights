@@ -10,6 +10,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifier": true
+  },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "**/tests/**/*.ts"]
 }

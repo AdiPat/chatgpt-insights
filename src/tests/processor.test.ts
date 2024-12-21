@@ -1,9 +1,21 @@
 import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
 import { processZipFile } from "../processor.js";
 import { join } from "path";
-import { writeFile, unlink } from "node:fs/promises";
+import { writeFile, readFile, mkdir, rm } from "node:fs/promises";
+import extract from "extract-zip";
 
 const MOCK_API_KEY = "sk-mock-key-123";
+
+vi.mock("extract-zip");
+vi.mock("node:fs/promises", async () => {
+  const actual = await vi.importActual("node:fs/promises");
+  return {
+    ...actual,
+    readFile: vi.fn(),
+    rm: vi.fn(),
+    mkdir: vi.fn(),
+  };
+});
 
 describe("processZipFile", () => {
   beforeEach(() => {
@@ -28,24 +40,23 @@ describe("processZipFile", () => {
     );
   });
 
-  test("logs processing information", async () => {
-    // Create a temporary zip file for testing
-    const testZipPath = join(process.cwd(), "test.zip");
-    await writeFile(testZipPath, "dummy content");
+  test("processes zip file and loads conversations", async () => {
+    const testZipPath = join(process.cwd(), "test_data.zip");
+    const mockConversations = [{ id: 1, messages: [] }];
 
-    try {
-      await processZipFile(testZipPath, MOCK_API_KEY);
+    vi.mocked(extract).mockResolvedValueOnce(undefined);
+    vi.mocked(readFile).mockResolvedValueOnce(
+      JSON.stringify(mockConversations)
+    );
 
-      expect(console.log).toHaveBeenCalledWith(
-        `Processing file: ${testZipPath}`
-      );
-      expect(console.log).toHaveBeenCalledWith(
-        "Using API key:",
-        `${MOCK_API_KEY.slice(0, 3)}...${MOCK_API_KEY.slice(-4)}`
-      );
-    } finally {
-      // Cleanup
-      await unlink(testZipPath);
-    }
+    await processZipFile(testZipPath, MOCK_API_KEY);
+
+    expect(extract).toHaveBeenCalled();
+    expect(readFile).toHaveBeenCalled();
+    expect(rm).toHaveBeenCalledWith(expect.any(String), {
+      recursive: true,
+      force: true,
+    });
+    expect(console.log).toHaveBeenCalledWith("Cleaned up temporary files");
   });
 });

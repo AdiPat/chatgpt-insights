@@ -131,9 +131,11 @@ dist
 
 test_data.zip
 test.txt
+test_data/*
 
 node_modules
 dist
 .DS_Store
 .shincytmp
+
 

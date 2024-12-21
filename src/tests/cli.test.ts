@@ -1,4 +1,4 @@
-import { expect, test, describe, vi, beforeEach } from "vitest";
+import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
 import { ChatgptInsightsCli } from "../cli.js";
 import { processZipFile } from "../processor.js";
 import { getOpenAIKey } from "../api-config.js";
@@ -9,10 +9,22 @@ vi.mock("../api-config.js");
 
 describe("ChatgptInsightsCli", () => {
   let cli: ChatgptInsightsCli;
+  const originalArgv = process.argv;
+  let exitSpy: any;
+  let consoleSpy: any;
 
   beforeEach(() => {
     cli = new ChatgptInsightsCli();
     vi.clearAllMocks();
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+    consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.argv = originalArgv;
+    vi.restoreAllMocks();
   });
 
   test("should set correct name", () => {

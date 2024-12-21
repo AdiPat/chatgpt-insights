@@ -1,18 +1,28 @@
 import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
 import { getOpenAIKey, CONFIG_DIR, KEY_FILE } from "../api-config.js";
-import { rm, writeFile, mkdir, access, constants } from "node:fs/promises";
+import {
+  rm,
+  writeFile,
+  mkdir,
+  access,
+  constants,
+  readFile,
+} from "node:fs/promises";
 import inquirer from "inquirer";
 
 vi.mock("inquirer");
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path, constants.F_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
+vi.mock("node:fs/promises", async () => {
+  const actual = await vi.importActual("node:fs/promises");
+  return {
+    ...actual,
+    mkdir: vi.fn(),
+    writeFile: vi.fn(),
+    readFile: vi.fn(),
+    rm: vi.fn(),
+    access: vi.fn().mockImplementation(() => Promise.resolve()),
+  };
+});
 
 describe("getOpenAIKey", () => {
   const mockKey = "sk-test-key-123";
@@ -36,17 +46,17 @@ describe("getOpenAIKey", () => {
 
   test("should prompt for key when no file exists", async () => {
     vi.mocked(inquirer.prompt).mockResolvedValueOnce({ apiKey: mockKey });
+    vi.mocked(readFile).mockRejectedValueOnce(new Error("File not found"));
 
     const key = await getOpenAIKey();
 
     expect(key).toBe(mockKey);
-    expect(await fileExists(KEY_FILE)).toBe(true);
+    expect(writeFile).toHaveBeenCalledWith(KEY_FILE, mockKey);
     expect(inquirer.prompt).toHaveBeenCalledTimes(1);
   });
 
   test("should read existing key from file", async () => {
-    await mkdir(CONFIG_DIR, { recursive: true });
-    await writeFile(KEY_FILE, mockKey);
+    vi.mocked(readFile).mockResolvedValueOnce(mockKey);
 
     const key = await getOpenAIKey();
 
@@ -91,5 +101,20 @@ describe("getOpenAIKey", () => {
 
     expect(validator("")).toBe("API key cannot be empty");
     expect(validator("valid-key")).toBe(true);
+  });
+
+  test("should handle write errors", async () => {
+    vi.mocked(inquirer.prompt).mockResolvedValueOnce({ apiKey: mockKey });
+    vi.mocked(writeFile).mockRejectedValueOnce(new Error("Write failed"));
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(getOpenAIKey()).rejects.toThrow("Write failed");
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Failed to write API key to file:",
+      expect.any(Error)
+    );
+
+    consoleSpy.mockRestore();
   });
 });

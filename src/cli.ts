@@ -58,6 +58,7 @@ export class ChatgptInsightsCli {
   }
 
   // For testing purposes
+  // Note sure if this is the best way to do this
   getProgram(): Command {
     return this.program;
   }

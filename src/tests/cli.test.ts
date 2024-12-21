@@ -2,6 +2,7 @@ import { expect, test, describe, vi, beforeEach, afterEach } from "vitest";
 import { ChatgptInsightsCli } from "../cli.js";
 import { processZipFile } from "../processor.js";
 import { getOpenAIKey } from "../api-config.js";
+import { ChatGTPConversations } from "../models/conversation.model.js";
 
 // Mock dependencies
 vi.mock("../processor.js");
@@ -70,7 +71,7 @@ describe("ChatgptInsightsCli", () => {
     const options = { regenerateKey: undefined };
 
     vi.mocked(getOpenAIKey).mockResolvedValueOnce(mockApiKey);
-    vi.mocked(processZipFile).mockResolvedValueOnce();
+    vi.mocked(processZipFile).mockResolvedValueOnce({} as ChatGTPConversations);
 
     await cli.processFile(testFilePath, options);
 
@@ -84,7 +85,7 @@ describe("ChatgptInsightsCli", () => {
     const options = { regenerateKey: true };
 
     vi.mocked(getOpenAIKey).mockResolvedValueOnce(mockApiKey);
-    vi.mocked(processZipFile).mockResolvedValueOnce();
+    vi.mocked(processZipFile).mockResolvedValueOnce({} as ChatGTPConversations);
 
     await cli.processFile(testFilePath, options);
 

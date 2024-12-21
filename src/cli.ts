@@ -1,7 +1,9 @@
 import { Command } from "commander";
 import { processZipFile } from "./processor.js";
 import { getOpenAIKey } from "./api-config.js";
-
+import { InsightEngine } from "./insight-engine.js";
+import fs from "fs";
+import { ChatGPTInsightsReport } from "./models/index.js";
 export class ChatgptInsightsCli {
   private program: Command;
 
@@ -34,7 +36,14 @@ export class ChatgptInsightsCli {
 
   async processFile(filepath: string, options: { regenerateKey?: boolean }) {
     const apiKey = await getOpenAIKey(options.regenerateKey);
-    await processZipFile(filepath, apiKey);
+    return processZipFile(filepath, apiKey);
+  }
+
+  async writeReportToFile(report: ChatGPTInsightsReport) {
+    const jsonReport = JSON.stringify(report, null, 2);
+    const timestamp = Date.now();
+    const filename = `insights-${timestamp}.json`;
+    fs.writeFileSync(filename, jsonReport);
   }
 
   async execute(): Promise<void> {
@@ -43,7 +52,10 @@ export class ChatgptInsightsCli {
     this.program.action(
       async (filepath: string, options: { regenerateKey?: boolean }) => {
         try {
-          await this.processFile(filepath, options);
+          const conversations = await this.processFile(filepath, options);
+          const insightEngine = new InsightEngine(conversations);
+          const insightsReport = await insightEngine.generateReport();
+          await this.writeReportToFile(insightsReport);
         } catch (error) {
           console.error(
             "Error processing file:",

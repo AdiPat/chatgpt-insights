@@ -132,6 +132,7 @@ dist
 test_data.zip
 test.txt
 test_data/*
+insights-*
 
 node_modules
 dist

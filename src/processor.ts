@@ -4,6 +4,7 @@ import extract from "extract-zip";
 import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
+import { ChatGTPConversations } from "./models/conversation.model";
 
 function isZipFile(filepath: string): boolean {
   return filepath.endsWith(".zip");
@@ -17,10 +18,15 @@ async function assertFileExists(filepath: string): Promise<void> {
   }
 }
 
-async function assertZipFile(filepath: string): Promise<void> {
-  if (!isZipFile(filepath)) {
+async function validateFile(filepath: string): Promise<string> {
+  const absolutePath = resolve(filepath);
+  await assertFileExists(absolutePath);
+
+  if (!isZipFile(absolutePath)) {
     throw new Error("File must be a zip file");
   }
+
+  return absolutePath;
 }
 
 async function createTempDir(): Promise<string> {
@@ -29,27 +35,12 @@ async function createTempDir(): Promise<string> {
   return tempPath;
 }
 
-async function loadConversations(extractPath: string): Promise<any> {
+async function loadConversations(
+  extractPath: string
+): Promise<ChatGTPConversations> {
   const conversationsPath = join(extractPath, "conversations.json");
   const data = await readFile(conversationsPath, "utf-8");
   return JSON.parse(data);
-}
-
-async function validateFile(filepath: string): Promise<string> {
-  const absolutePath = resolve(filepath);
-  await assertFileExists(absolutePath);
-  await assertZipFile(absolutePath);
-  return absolutePath;
-}
-
-function informUser(
-  filepath: string,
-  apiKey: string,
-  sizeInBytes: number
-): void {
-  console.log(`Processing file: ${filepath}`);
-  console.log("Using API key:", `${apiKey.slice(0, 3)}...${apiKey.slice(-4)}`);
-  console.log(`Loaded conversations size: ${sizeInBytes} bytes`);
 }
 
 async function cleanupTempDir(tempDir: string): Promise<void> {
@@ -61,23 +52,33 @@ async function cleanupTempDir(tempDir: string): Promise<void> {
   }
 }
 
+function informUser(
+  filepath: string,
+  apiKey: string,
+  conversations: ChatGTPConversations
+): void {
+  console.log(`Processing file: ${filepath}`);
+  console.log("Using API key:", `${apiKey.slice(0, 3)}...${apiKey.slice(-4)}`);
+  console.log(`Loaded ${conversations.length} conversations`);
+}
+
 export async function processZipFile(
   filepath: string,
   apiKey: string
-): Promise<void> {
+): Promise<ChatGTPConversations> {
   const absolutePath = await validateFile(filepath);
   const tempDir = await createTempDir();
+  let conversations: ChatGTPConversations = [];
 
   try {
     // Extract zip file
     await extract(absolutePath, { dir: tempDir });
 
     // Load conversations
-    const conversations = await loadConversations(tempDir);
-    const sizeInBytes = Buffer.from(JSON.stringify(conversations)).length;
-
-    informUser(absolutePath, apiKey, sizeInBytes);
+    conversations = await loadConversations(tempDir);
+    informUser(absolutePath, apiKey, conversations);
   } finally {
     await cleanupTempDir(tempDir);
   }
+  return conversations;
 }

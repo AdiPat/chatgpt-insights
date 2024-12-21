@@ -1,5 +1,7 @@
 import { ConversationNode } from "./conversation-node.model";
 
+export type ChatGTPConversations = Conversation[];
+
 export interface Conversation {
   title: string;
   create_time: number;

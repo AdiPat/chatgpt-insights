@@ -39,18 +39,18 @@ export class ChatgptInsightsCli {
     return processZipFile(filepath, apiKey);
   }
 
-  async writeReportToFile(report: ChatGPTInsightsReport) {
+  async writeReportToFile(
+    report: ChatGPTInsightsReport,
+    insightEngine: InsightEngine
+  ) {
     // Write JSON report
     const jsonReport = JSON.stringify(report, null, 2);
     const timestamp = Date.now();
     const jsonFilename = `insights-${timestamp}.json`;
     fs.writeFileSync(jsonFilename, jsonReport);
 
-    // Generate and write PDF
-    const insightEngine = new InsightEngine([]); // Empty array as we just need PDF generation
-    const pdfBuffer = await insightEngine.generatePDF(report);
-    const pdfFilename = `insights-${timestamp}.pdf`;
-    fs.writeFileSync(pdfFilename, pdfBuffer);
+    // Use the same engine instance for HTML/PDF generation
+    await insightEngine.writeReportToFile(report);
   }
 
   async execute(): Promise<void> {
@@ -62,7 +62,7 @@ export class ChatgptInsightsCli {
           const conversations = await this.processFile(filepath, options);
           const insightEngine = new InsightEngine(conversations);
           const insightsReport = await insightEngine.generateReport();
-          await this.writeReportToFile(insightsReport);
+          await this.writeReportToFile(insightsReport, insightEngine);
         } catch (error) {
           console.error(
             "Error processing file:",

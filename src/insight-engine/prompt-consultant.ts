@@ -29,7 +29,7 @@ import { openai } from "@ai-sdk/openai";
  */
 export class PromptConsultant {
   private conversations: ChatGTPConversations;
-  private DEFAULT_PROMPT_COUNT = 10;
+
   /**
    * Creates a new instance of PromptConsultant.
    * @param conversations - The conversations to analyze
@@ -59,50 +59,44 @@ export class PromptConsultant {
   }
 
   /**
-   * Analyzes a single prompt for improvement suggestions.
-   * Our AI writing coach in action! 🎓
-   * @private
-   * @param prompt - The prompt to analyze
-   * @returns {Promise<string[]>} Array of improvement suggestions
-   */
-  private async analyzePrompt(prompt: string): Promise<string[]> {
-    const { object } = await generateObject({
-      model: openai("gpt-4o"),
-      schema: z.object({ suggestions: z.array(z.string()) }),
-      prompt: `Analyze the following prompt: ${prompt}.
-            Suggest how this prompt can be improved to support the goals of Explainable AI.
-            Our goal is to make AI more transparent and understandable.
-            We want to help our users prompt AI systems better.
-            Take into account all factors and come up with at most 5 suggestions.`,
-    });
-    return object.suggestions;
-  }
-
-  /**
    * Analyzes all prompts and returns top suggestions.
    * The grand finale of our prompt analysis! 🎭
    * @public
    * @returns {Promise<string[]>} Array of top improvement suggestions
    */
   public async analyzeAllPrompts(): Promise<string[]> {
-    const allPrompts = this.extractUserPrompts();
-    const prompts = allPrompts.slice(0, this.DEFAULT_PROMPT_COUNT);
-    const suggestions = [];
+    const prompts = this.extractUserPrompts();
 
-    for (const prompt of prompts) {
-      const suggestion = await this.analyzePrompt(prompt);
-      suggestions.push(...suggestion);
+    if (prompts.length === 0) {
+      console.log("No prompts found to analyze");
+      return [];
     }
 
-    // Randomize and limit suggestions
-    const randomSuggestions = suggestions.sort(() => Math.random() - 0.5);
-    const topSuggestions = randomSuggestions.slice(
-      0,
-      randomSuggestions.length > 5
-        ? Math.min(randomSuggestions.length, 10)
-        : randomSuggestions.length
-    );
+    try {
+      const { object } = await generateObject({
+        model: openai("gpt-4o"),
+        schema: z.object({
+          suggestions: z.array(z.string()),
+        }),
+        prompt: `Analyze these user prompts and provide 5 specific suggestions for improvement:
+          
+          ${prompts.slice(0, 10).join("\n")}
+          
+          Focus on:
+          1. Clarity and specificity
+          2. Structure and organization
+          3. Context provision
+          4. Technical accuracy
+          5. Best practices
+          
+          Provide actionable, specific suggestions.`,
+      });
 
-    return topSuggestions;
+      console.log("Generated suggestions:", object.suggestions);
+      return object.suggestions;
+    } catch (error) {
+      console.error("Error generating suggestions:", error);
+      return [];
+    }
   }
 }

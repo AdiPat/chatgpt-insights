@@ -17,10 +17,11 @@
  * And unlike your friends, it actually reads everything 😉
  */
 
-import PDFDocument from "pdfkit";
+import { writeFile } from "fs/promises";
+import puppeteer from "puppeteer";
 import { ChatGTPConversations, ChatGPTInsightsReport } from "../models";
-import { NameDetector } from "./name-detector";
-import { PromptConsultant } from "./prompt-consultant";
+import { NameDetector } from "./name-detector.js";
+import { PromptConsultant } from "./prompt-consultant.js";
 
 /**
  * Main engine class for generating insights from ChatGPT conversations.
@@ -46,9 +47,34 @@ export class InsightEngine {
    * @returns {Promise<ChatGPTInsightsReport>} The generated insights report
    */
   public async generateReport(): Promise<ChatGPTInsightsReport> {
+    const userName = await this.nameDetector.detectName();
+    const suggestions = await this.promptConsultant.analyzeAllPrompts();
+
+    if (suggestions.length === 0) {
+      console.log("No suggestions found");
+      console.log(suggestions);
+    } else {
+      console.log("Suggestions found");
+      console.log(suggestions);
+    }
+
+    // Generate some default suggestions if none are available
+    const defaultSuggestions = [
+      "Try using more specific keywords in your prompts",
+      "Break down complex questions into smaller parts",
+      "Include context when switching topics",
+      "Review ChatGPT's response before asking follow-up questions",
+      "Use system prompts to set context for complex tasks",
+    ];
+
+    const finalSuggestions =
+      suggestions.length > 0 ? suggestions : defaultSuggestions;
+
+    console.log("Final suggestions: ", finalSuggestions.length);
+
     return {
-      user_name: await this.nameDetector.detectName(),
-      suggestions: await this.promptConsultant.analyzeAllPrompts(),
+      user_name: userName,
+      suggestions: finalSuggestions,
       user_analysis: {
         overview: {
           total_chats: this.conversations.length,
@@ -158,101 +184,322 @@ export class InsightEngine {
     };
   }
 
-  /**
-   * Generates a PDF report from the insights.
-   * Making PDFs great again! 📄✨
-   * @param report - The insights report to convert to PDF
-   * @returns {Promise<Buffer>} The generated PDF as a buffer
-   */
-  public async generatePDF(report: ChatGPTInsightsReport): Promise<Buffer> {
-    const doc = new PDFDocument();
-    const chunks: Buffer[] = [];
-
-    doc.on("data", (chunk) => chunks.push(chunk));
-
-    // Title and Introduction
-    doc
-      .fontSize(24)
-      .text(`ChatGPT Insights Report`, { align: "center" })
-      .moveDown()
-      .fontSize(18)
-      .text(`Hi ${report.user_name}!`, { align: "center" })
-      .moveDown()
-      .fontSize(12)
-      .text("Here's your personalized analysis of ChatGPT interactions.", {
-        align: "center",
-      })
-      .moveDown(2);
-
-    // Overview Section
-    doc
-      .fontSize(16)
-      .text("Overview", { underline: true })
-      .moveDown()
-      .fontSize(12)
-      .text(`Total Chats: ${report.user_analysis.overview.total_chats}`)
-      .text(`Total Words: ${report.user_analysis.overview.total_words_used}`)
-      .text(`Total Prompts: ${report.user_analysis.overview.total_prompts}`)
-      .moveDown(2);
-
-    // Suggestions Section
-    if (report.suggestions && report.suggestions.length > 0) {
-      doc
-        .fontSize(16)
-        .text("Prompt Improvement Suggestions", { underline: true })
-        .moveDown()
-        .fontSize(12);
-
-      report.suggestions.forEach((suggestion, index) => {
-        doc.text(`${index + 1}. ${suggestion}`).moveDown(0.5);
-      });
-      doc.moveDown();
-    }
-
-    // Recommendations Section
-    doc
-      .fontSize(16)
-      .text("Recommendations", { underline: true })
-      .moveDown()
-      .fontSize(12);
-
-    // Tips to Improve
-    if (report.recommendations.tips_to_improve.length > 0) {
-      doc.text("Tips to Improve:").moveDown(0.5);
-      report.recommendations.tips_to_improve.forEach((tip, index) => {
-        doc.text(`• ${tip}`).moveDown(0.5);
-      });
-      doc.moveDown();
-    }
-
-    // Topics to Explore
-    if (report.recommendations.suggested_topics_to_explore.length > 0) {
-      doc.text("Suggested Topics:").moveDown(0.5);
-      report.recommendations.suggested_topics_to_explore.forEach(
-        (topic, index) => {
-          doc.text(`• ${topic}`).moveDown(0.5);
+  public generateHTML(report: ChatGPTInsightsReport): string {
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Insights Report - ${report.user_name}</title>
+    <style>
+        :root {
+            --primary: #00ffff;
+            --secondary: #00cccc;
+            --text: #ffffff;
+            --muted: #888888;
+            --bg: #000000;
+            --card-bg: #111111;
         }
-      );
-      doc.moveDown();
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: var(--bg);
+        }
+        
+        h1, h2, h3 {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border-bottom: 4px solid var(--primary);
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,255,255,0.1);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--primary);
+            color: var(--bg);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin: 0.25rem;
+        }
+        
+        .suggestions {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .suggestions li {
+            margin: 0.75rem 0;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary);
+            color: var(--text);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 2rem 0 1rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding: 2rem;
+            color: var(--muted);
+            border-top: 1px solid var(--card-bg);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--card-bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-value {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .suggestion-bullet {
+            color: var(--primary);
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>✨ ChatGPT Insights Report</h1>
+        <p>Generated for ${report.user_name}</p>
+        <p>${new Date().toLocaleDateString()}</p>
+    </div>
+
+    <section>
+        <div class="section-title">
+            <h2>📊 Overview</h2>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-value">${report.user_analysis.overview.total_chats.toLocaleString()}</div>
+                <div class="stat-label">Total Conversations</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${report.user_analysis.overview.total_prompts.toLocaleString()}</div>
+                <div class="stat-label">Total Prompts</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${report.user_analysis.overview.total_words_used.toLocaleString()}</div>
+                <div class="stat-label">Total Words</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${
+                  report.user_analysis.overview.average_prompt_length
+                }</div>
+                <div class="stat-label">Avg. Prompt Length</div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-title">
+            <h2> Activity Patterns</h2>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <h3>Most Active Days</h3>
+                <p>${report.user_analysis.overview.most_active_days.join(
+                  ", "
+                )}</p>
+            </div>
+            <div class="stat-card">
+                <h3>Peak Hours</h3>
+                <p>${report.user_analysis.overview.most_active_hours.join(
+                  ", "
+                )}</p>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-title">
+            <h2>💭 Prompting Style</h2>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <h3>Common Phrases</h3>
+                <div>
+                    ${report.user_analysis.prompting_style.common_phrases
+                      .map((phrase) => `<span class="tag">${phrase}</span>`)
+                      .join("")}
+                </div>
+            </div>
+            <div class="stat-card">
+                <h3>Most Used Keywords</h3>
+                <div>
+                    ${report.user_analysis.prompting_style.most_used_keywords
+                      .map((keyword) => `<span class="tag">${keyword}</span>`)
+                      .join("")}
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <h3>Prompt Efficiency</h3>
+            <p>Average Follow-up Prompts: ${report.user_analysis.prompting_style.prompt_efficiency.average_follow_up_prompts.toFixed(
+              2
+            )}</p>
+            <div class="progress-bar">
+                <div class="progress-value" style="width: ${
+                  report.user_analysis.prompting_style.prompt_efficiency
+                    .percentage_prompts_needing_rephrasing
+                }%"></div>
+            </div>
+            <p>Rephrasing Needed: ${report.user_analysis.prompting_style.prompt_efficiency.percentage_prompts_needing_rephrasing.toFixed(
+              1
+            )}%</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-title">
+            <h2>💡 Suggestions for Improvement</h2>
+        </div>
+        <div class="stat-card">
+            <ul class="suggestions">
+                ${report.suggestions
+                  .map(
+                    (suggestion) => `
+                    <li>
+                        <span class="suggestion-bullet">•</span>
+                        ${suggestion}
+                    </li>
+                `
+                  )
+                  .join("")}
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="section-title">
+            <h2>🎯 Recommendations</h2>
+        </div>
+        <div class="stat-grid">
+            <div class="stat-card">
+                <h3>Topics to Explore</h3>
+                ${report.recommendations.suggested_topics_to_explore
+                  .map((topic) => `<span class="tag">${topic}</span>`)
+                  .join("")}
+            </div>
+            <div class="stat-card">
+                <h3>Interaction Changes</h3>
+                <ul class="suggestions">
+                    ${report.recommendations.recommended_interaction_changes
+                      .map((change) => `<li>${change}</li>`)
+                      .join("")}
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Generated by ChatGPT Insights - ShinCy Labs 🚀</p>
+        <p>Making AI more explainable, one chat at a time! ✨</p>
+        <p>${new Date().toLocaleString()}</p>
+    </footer>
+</body>
+</html>
+    `;
+  }
+
+  private async convertHTMLToPDF(html: string): Promise<Buffer> {
+    const browser = await puppeteer.launch();
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "networkidle0" });
+      await page.addStyleTag({
+        content: `
+          @page { margin-bottom: 50px; }
+          .footer { position: fixed; bottom: 0; width: 100%; padding: 10px; text-align: center; }
+        `,
+      });
+
+      const pdfBuffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
+        displayHeaderFooter: true,
+        footerTemplate: `
+          <div style="font-size: 10px; text-align: center; width: 100%;">
+            <span class="pageNumber"></span> of <span class="totalPages"></span>
+          </div>
+        `,
+      });
+
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
     }
+  }
 
-    // Footer
-    doc
-      .fontSize(10)
-      .text("Generated by ChatGPT Insights - ShinCy Labs 🚀", {
-        align: "center",
-      })
-      .moveDown()
-      .text(`Generated on: ${new Date().toLocaleDateString()}`, {
-        align: "center",
-      });
+  public async writeReportToFile(report: ChatGPTInsightsReport): Promise<void> {
+    const timestamp = Date.now();
+    const html = this.generateHTML(report);
 
-    doc.end();
+    const htmlFilename = `insights-${timestamp}.html`;
+    await writeFile(htmlFilename, html, "utf-8");
+    console.log(`HTML report written to ${htmlFilename}`);
 
-    return new Promise((resolve) => {
-      doc.on("end", () => {
-        resolve(Buffer.concat(chunks));
-      });
-    });
+    const pdf = await this.convertHTMLToPDF(html);
+    const pdfFilename = `insights-${timestamp}.pdf`;
+    await writeFile(pdfFilename, pdf);
+    console.log(`PDF report written to ${pdfFilename}`);
   }
 }

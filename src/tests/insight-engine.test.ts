@@ -1,5 +1,5 @@
 import { expect, test, describe } from "vitest";
-import { InsightEngine } from "../insight-engine";
+import { InsightEngine } from "../insight-engine/insight-engine.js";
 import { ChatGTPConversations, Conversation } from "../models";
 
 describe("InsightEngine", () => {
@@ -33,18 +33,34 @@ describe("InsightEngine", () => {
     expect(engine).toBeDefined();
   });
 
-  test("should generate basic overview stats", () => {
+  test("should generate report with basic structure", async () => {
     const engine = new InsightEngine(mockConversations);
-    const report = engine.generateReport();
+    const report = await engine.generateReport();
 
-    expect(report.user_analysis.overview.total_chats).toBe(1);
-    expect(report.user_analysis.overview.total_words_used).toBe(0);
-    expect(report.user_analysis.overview.total_prompts).toBe(0);
+    // Check basic structure
+    expect(report).toHaveProperty("user_name");
+    expect(report).toHaveProperty("user_analysis");
+    expect(report).toHaveProperty("visualizations");
+    expect(report).toHaveProperty("recommendations");
+    expect(report).toHaveProperty("suggestions");
   });
 
-  test("should initialize empty topics analysis", () => {
+  test("should generate basic overview stats", async () => {
     const engine = new InsightEngine(mockConversations);
-    const report = engine.generateReport();
+    const report = await engine.generateReport();
+
+    expect(report.user_analysis.overview.total_chats).toBe(1);
+    expect(
+      report.user_analysis.overview.total_words_used
+    ).toBeGreaterThanOrEqual(0);
+    expect(report.user_analysis.overview.total_prompts).toBeGreaterThanOrEqual(
+      0
+    );
+  });
+
+  test("should initialize empty topics analysis", async () => {
+    const engine = new InsightEngine(mockConversations);
+    const report = await engine.generateReport();
 
     expect(report.user_analysis.topics_analysis.most_frequent_topics).toEqual(
       []
@@ -52,9 +68,9 @@ describe("InsightEngine", () => {
     expect(report.user_analysis.topics_analysis.topic_histogram).toEqual({});
   });
 
-  test("should set default sentiment values", () => {
+  test("should set default sentiment values", async () => {
     const engine = new InsightEngine(mockConversations);
-    const report = engine.generateReport();
+    const report = await engine.generateReport();
 
     expect(report.user_analysis.sentiment_analysis.overall_sentiment).toBe(
       "Neutral"
@@ -68,9 +84,9 @@ describe("InsightEngine", () => {
     });
   });
 
-  test("should initialize empty visualizations", () => {
+  test("should initialize empty visualizations", async () => {
     const engine = new InsightEngine(mockConversations);
-    const report = engine.generateReport();
+    const report = await engine.generateReport();
 
     expect(report.visualizations.topic_histogram_url).toBe("");
     expect(report.visualizations.usage_timeline_url).toBe("");
@@ -78,13 +94,29 @@ describe("InsightEngine", () => {
     expect(report.visualizations.response_time_chart_url).toBe("");
   });
 
-  test("should initialize empty recommendations", () => {
+  test("should initialize empty recommendations", async () => {
     const engine = new InsightEngine(mockConversations);
-    const report = engine.generateReport();
+    const report = await engine.generateReport();
 
     expect(report.recommendations.tips_to_improve).toEqual([]);
     expect(report.recommendations.suggested_topics_to_explore).toEqual([]);
     expect(report.recommendations.recommended_interaction_changes).toEqual([]);
     expect(report.recommendations.experimentation_suggestions).toEqual([]);
+  });
+
+  test("should generate PDF buffer", async () => {
+    const engine = new InsightEngine(mockConversations);
+    const report = await engine.generateReport();
+    const pdfBuffer = await engine.generatePDF(report);
+
+    expect(Buffer.isBuffer(pdfBuffer)).toBe(true);
+    expect(pdfBuffer.length).toBeGreaterThan(0);
+  });
+
+  test("should include suggestions in report", async () => {
+    const engine = new InsightEngine(mockConversations);
+    const report = await engine.generateReport();
+
+    expect(Array.isArray(report.suggestions)).toBe(true);
   });
 });

@@ -24,5 +24,5 @@ if (isDirectExecution()) {
 }
 
 export { processZipFile } from "./processor.js";
-export { InsightEngine } from "./insights-engine/insight-engine.js";
+export { InsightEngine } from "./insight-engine/insight-engine.js";
 export * from "./models/index.js";

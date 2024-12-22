@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { processZipFile } from "./processor.js";
 import { getOpenAIKey } from "./api-config.js";
-import { InsightEngine } from "./insights-engine/insight-engine.js";
+import { InsightEngine } from "./insight-engine/insight-engine.js";
 import fs from "fs";
 import { ChatGPTInsightsReport } from "./models/index.js";
 export class ChatgptInsightsCli {

@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import { processZipFile } from "./processor.js";
 import { getOpenAIKey } from "./api-config.js";
-import { InsightEngine } from "./insight-engine.js";
+import { InsightEngine } from "./insights-engine/insight-engine.js";
 import fs from "fs";
 import { ChatGPTInsightsReport } from "./models/index.js";
 export class ChatgptInsightsCli {
@@ -40,10 +40,17 @@ export class ChatgptInsightsCli {
   }
 
   async writeReportToFile(report: ChatGPTInsightsReport) {
+    // Write JSON report
     const jsonReport = JSON.stringify(report, null, 2);
     const timestamp = Date.now();
-    const filename = `insights-${timestamp}.json`;
-    fs.writeFileSync(filename, jsonReport);
+    const jsonFilename = `insights-${timestamp}.json`;
+    fs.writeFileSync(jsonFilename, jsonReport);
+
+    // Generate and write PDF
+    const insightEngine = new InsightEngine([]); // Empty array as we just need PDF generation
+    const pdfBuffer = await insightEngine.generatePDF(report);
+    const pdfFilename = `insights-${timestamp}.pdf`;
+    fs.writeFileSync(pdfFilename, pdfBuffer);
   }
 
   async execute(): Promise<void> {

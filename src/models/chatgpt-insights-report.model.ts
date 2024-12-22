@@ -1,6 +1,8 @@
 import { Conversation } from "./conversation.model";
 
 export interface ChatGPTInsightsReport {
+  user_name: string;
+  suggestions: string[];
   user_analysis: UserAnalysis;
   visualizations: Visualizations;
   recommendations: Recommendations;

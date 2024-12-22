@@ -16,12 +16,12 @@
     "chatgpt-insights": "./dist/index.js"
   },
   "scripts": {
+    "start": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' node src/index.ts",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "vitest run --coverage",
     "test:watch": "vitest --coverage",
-    "start": "node --loader ts-node/esm src/index.ts",
-    "dev": "node --watch --loader ts-node/esm src/index.ts"
+    "dev": "NODE_OPTIONS='--loader ts-node/esm --experimental-specifier-resolution=node' node --watch src/index.ts"
   },
   "keywords": [
     "chatgpt",
